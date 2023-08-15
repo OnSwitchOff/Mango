@@ -48,7 +48,6 @@ namespace Mango.Services.EmailAPI.Messaging
             var message = arg.Message;
             var email = Encoding.UTF8.GetString(message.Body);
 
-
             try
             {
                 await _emailService.RegisterUserEmailAndLog(email);

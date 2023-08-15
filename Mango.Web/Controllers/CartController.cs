@@ -10,14 +10,22 @@ namespace Mango.Web.Controllers
     public class CartController : Controller
     {
         private readonly ICartService _cartService;
+        private readonly IOrderService _orderService;
 
-        public CartController(ICartService cartService)
+        public CartController(ICartService cartService, IOrderService orderService)
         {
             _cartService = cartService;
+            _orderService = orderService;
         }
 
         [Authorize]
         public async Task<IActionResult> CartIndex()
+        {
+            return View(await LoadCartDtoBasedOnLoggedInUserAsync());
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Checkout()
         {
             return View(await LoadCartDtoBasedOnLoggedInUserAsync());
         }
@@ -84,6 +92,27 @@ namespace Mango.Web.Controllers
             if (response is { IsSuccess: true })
             {
                 TempData["success"] = "Email will be proccessed and sent shortly.";
+                return RedirectToAction(nameof(CartIndex));
+            }
+            return View();
+        }
+
+
+        [HttpPost]
+        [ActionName("Checkout")]
+        public async Task<IActionResult> Checkout(CartDto cartDto)
+        {
+            CartDto cart = await LoadCartDtoBasedOnLoggedInUserAsync();
+            cart.CartHeader.Phone = cartDto.CartHeader.Phone;
+            cart.CartHeader.Email = cartDto.CartHeader.Email;
+            cart.CartHeader.Name = cartDto.CartHeader.Name;
+
+            ResponseDto? response = await _orderService.CreateOrder(cart);
+            OrderHeaderDto orderHeaderDto = JsonConvert.DeserializeObject<OrderHeaderDto>(Convert.ToString(response.Result));
+
+            if (response is { IsSuccess: true })
+            {
+                TempData["success"] = "Order was added";
                 return RedirectToAction(nameof(CartIndex));
             }
             return View();
