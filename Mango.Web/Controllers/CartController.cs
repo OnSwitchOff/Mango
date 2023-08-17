@@ -112,10 +112,27 @@ namespace Mango.Web.Controllers
 
             if (response is { IsSuccess: true })
             {
-                TempData["success"] = "Order was added";
-                return RedirectToAction(nameof(CartIndex));
+                var domain = Request.Scheme + "://" + Request.Host.Value + "/";
+
+                StripeRequestDto stripeRequestDto = new StripeRequestDto()
+                {
+                    ApprovedUrl = $"{domain}cart/confirmation?orderId={orderHeaderDto.OrderHeaderId}",
+                    CancelUrl = $"{domain}cart/checkout",
+                    OrderHeader = orderHeaderDto,
+                };
+
+                var stripeResponse = await _orderService.CreateStripeSession(stripeRequestDto);
+                StripeRequestDto stripeResponseResult = JsonConvert.DeserializeObject<StripeRequestDto>(Convert.ToString(stripeResponse.Result));
+                Response.Headers.Add("Location", stripeResponseResult.StripeSessionUrl);
+                return new StatusCodeResult(303);
             }
             return View();
+        }
+
+        [Authorize]
+        public async Task<IActionResult> Confirmation(int orderId)
+        {
+            return View(orderId);
         }
     }
 }
